@@ -1,0 +1,24 @@
+
+
+In Human3.6M there are 5 subjects for training and 2 for validation.
+Furthermore in the
+A simple yet effective baseline for 3d human pose estimation
+they used Stacked Hourglass detection to train the network and
+they apply standard normalization to the 2D inputs and 3D outputs
+by subtracting the mean and dividing by the standard deviation.
+Knowing that the files are divided in;
+
+train_2d.pth.tar: Contains the subjects for the training process in 2D
+    (input of the network)
+train_2d_ft.pth.tar: Contains the subjects for the training process in 2D
+    with the Stacked Hourglass detection (input of the network)
+train_3d.pth.tar: Contains the subjects for the training process in 3D
+    (output of the network)
+test_2d.pth.tar: Contains the subjects for the validation process in 2D.
+test_2d_ft.pth.tar: Contains the subjects for the validation process in 2D
+    with the Stacked Hourglass detection.
+test_3d.pth.tar: Contains the subjects for the validation process in 3D.
+stat_3d.pth.tar: Contains the main/std of the 2D inputs and 3D outputs to unnormalize
+    the data and calculate MPJPE.
+    
+You can train the network either with Stacked Hourglass detection or not.
