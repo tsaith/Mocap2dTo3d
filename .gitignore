@@ -20,6 +20,7 @@ checkpoint/
 data/
 h36m/
 h36m_ft/
+models/
 
 # for jupyter notebook
 .ipynb_checkpoints/

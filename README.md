@@ -1,3 +1,9 @@
+# MocapTo3d
+
+Lift mocap information from 2d to 3d. 
+
+
+
 # 3d_pose_baseline_pytorch
 
 A PyTorch implementation of a simple baseline for 3d human pose estimation.
