@@ -1,5 +1,7 @@
 from __future__ import print_function, absolute_import, division
 
+import os
+
 import torch
 import torchvision
 
@@ -10,13 +12,18 @@ print("Start ---")
 
 device = "cuda" # "cuda" or "cpu"
 
-pretrained_model_path = "/home/andrew/projects/3d_pose_baseline_pytorch/models/ckpt_best.pth.tar"
+work_dir_path = "/home/andrew/projects/MocapTo3d"
+model_dir_name = "models"
+pretrained_model_name = "ckpt_best.pth.tar"
+exported_model_name = "pretained_model_cpp.pt"
+pretrained_model_path = os.path.join(work_dir_path, model_dir_name, pretrained_model_name) 
 print("pretrained_model_path : ", pretrained_model_path)
 
 # An instance of your model
 model = LinearModel()
-model = model.cuda()
+model.cuda()
 #model = model.cpu()
+model.eval() 
 
 # Load the pretrained model
 ckpt = torch.load(pretrained_model_path)
@@ -53,6 +60,7 @@ print(type(outputs), outputs[0,:10], outputs.shape)
 
 # This will produce a traced_resnet_model.pt file
 # in working dir
-traced_script_module.save("pretained_model_cpp.pt")
+print("Export the pretained model for c++ as ", exported_model_name)
+traced_script_module.save(exported_model_name)
 
 print("End ---")
