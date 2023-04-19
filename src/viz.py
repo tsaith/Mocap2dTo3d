@@ -4,7 +4,7 @@
 import matplotlib.pyplot as plt
 import data_utils
 import numpy as np
-import h5py
+#import h5py
 import os
 from mpl_toolkits.mplot3d import Axes3D
 

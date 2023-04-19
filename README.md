@@ -1,4 +1,4 @@
-# MocapTo3d
+# Mocap2dTo3d
 
 Lift mocap information from 2d to 3d. 
 
