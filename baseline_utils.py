@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def make_hip_as_center(pose):
 
     hip = pose[0]
@@ -9,14 +8,12 @@ def make_hip_as_center(pose):
     return out
 
 
-def mp_to_baseline_inputs(mp_results):
-
-    mp_pose_landmarks = mp_results.pose_landmarks
+def holistic_to_baseline_inputs(data):
 
     num_input_points = 16
     num_output_points = num_output_points
     dims = 3
 
-    inputs = np.zeros(num_input_points*dims, dtype=np.float32)
+    data_inputs = np.zeros(num_input_points*dims, dtype=np.float32)
 
     

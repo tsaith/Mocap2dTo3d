@@ -5,13 +5,13 @@ from skyeye.utils.opencv import Webcam, wait_key
 import mediapipe as mp
 import yaml
 
-from holistic import Holistic
+from holistic_data import HolisticData
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_holistic = mp.solutions.holistic
 
-holistic = mp_holistic.Holistic(
+holistic_detector = mp_holistic.Holistic(
     min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     webcam.open(device, width=frame_width, height=frame_height,
         use_V4L2=use_V4L2, autofocus=autofocus, auto_exposure=auto_exposure)
 
-    holistic = Holistic()
+    holistic_data = HolisticData()
 
 
     frame_count = 0
@@ -75,7 +75,9 @@ if __name__ == '__main__':
         # To improve performance, optionally mark the image as not writeable to
         # pass by reference.
         image.flags.writeable = False
-        results = holistic.process(image)
+        results = holistic_detector.process(image)
+
+        holistic_data.update(results)
 
         # Draw landmark annotation on the image.
         #mp_drawing.draw_landmarks(
