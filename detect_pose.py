@@ -5,7 +5,19 @@ from skyeye.utils.opencv import Webcam, wait_key
 import mediapipe as mp
 import yaml
 
+import torch
+import torch.nn as nn
+import torch.optim
+import torch.backends.cudnn as cudnn
+from torch.utils.data import DataLoader
+from torch.autograd import Variable
+
+from src.model import LinearModel, weight_init
 from holistic_data import HolisticData
+from baseline_data import BaselineData
+
+from plot_utils import plot_baseline_data_2d, plot_baseline_pose_2d
+from plot_utils import plot_baseline_pose_2d, plot_baseline_pose_3d
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -34,6 +46,8 @@ if __name__ == '__main__':
     autofocus = False
     auto_exposure = True
 
+    baseline_checkpoint_path = "ckpt_best.pth.tar"
+
     # Set mediapipe using GPU
     with open(r'mediapipe.yaml', 'r', encoding='utf-8') as f:
         inputs = yaml.load(f, Loader=yaml.Loader)
@@ -48,7 +62,17 @@ if __name__ == '__main__':
         use_V4L2=use_V4L2, autofocus=autofocus, auto_exposure=auto_exposure)
 
     holistic_data = HolisticData()
+    baseline_data = BaselineData()
 
+    # Baseline model
+    model = LinearModel()
+    model = model.cuda()
+    model.apply(weight_init)
+
+    # Load checkpoint 
+    ckpt = torch.load(baseline_checkpoint_path)
+    model.load_state_dict(ckpt['state_dict'])
+    model.eval()
 
     frame_count = 0
     while True:
@@ -78,6 +102,25 @@ if __name__ == '__main__':
         results = holistic_detector.process(image)
 
         holistic_data.update(results)
+        baseline_data.update(holistic_data)
+
+        inputs = baseline_data.get_bl_inputs()  
+         
+        inputs = torch.from_numpy(inputs)
+        inputs = Variable(inputs.cuda())
+        outputs = model(inputs)
+
+        outputs = outputs.data.cpu().numpy()
+
+        outputs = baseline_data.unnormalize_outputs(outputs)
+        baseline_pose = outputs[0]
+        #baseline_pose = baseline_data.get_pose_flattened()
+
+        pose_2d_fig = plot_baseline_pose_2d(baseline_pose, title="baseline pose")
+        pose_2d_fig.savefig("pose_2d.jpg")
+
+        pose_3d_fig = plot_baseline_pose_3d(baseline_pose, title="baseline pose 3d")
+        pose_3d_fig.savefig("pose_3d.jpg")
 
         # Draw landmark annotation on the image.
         #mp_drawing.draw_landmarks(

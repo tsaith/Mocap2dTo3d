@@ -95,6 +95,8 @@ def main(opt):
 
         if i == 0:
 
+            print(f"shape of inps: {inps.shape}")
+
             inputs = Variable(inps.cuda())
             targets = Variable(tars.cuda())
             outputs = model(inputs)
