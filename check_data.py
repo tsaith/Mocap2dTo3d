@@ -26,9 +26,11 @@ import src.log as log
 from src.model import LinearModel, weight_init
 from src.datasets.human36m import Human36M
 
+from baseline_data import BaselineData
+
 import matplotlib.pyplot as plt
-from plot_utils import plot_baseline_data_2d, plot_baseline_pose_2d
-from plot_utils import plot_baseline_pose_2d, plot_baseline_pose_3d
+from plot_utils import plot_bl_inputs, plot_bl_outputs
+from plot_utils import plot_bl_pose_2d, plot_bl_pose_3d
 
 def main(opt):
 
@@ -48,6 +50,10 @@ def main(opt):
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     criterion = nn.MSELoss(size_average=True).cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
+
+
+    bl_output = BaselineData()
+    bl_target = BaselineData()
 
     # load ckpt
     if opt.load:
@@ -129,24 +135,25 @@ def main(opt):
     target_3d = targets_use[0] 
     output_3d = outputs_use[0] 
  
-    print(f"len(data_input): {len(data_input)}")
-    print(f"len(data_output): {len(data_output)}")
-    print(f"len(target_3d): {len(target_3d)}")
-    print(f"len(output_3d): {len(output_3d)}")
+    bl_target.update_with_bl_pose(target_3d)
+    bl_output.update_with_bl_pose(output_3d)
 
-    input_fig = plot_baseline_data_2d(data_input, title="2d baseline inputs")
+    input_fig = plot_bl_inputs(data_input, title="2d baseline inputs")
     input_fig.savefig("data_input.jpg")
 
-    output_fig = plot_baseline_data_2d(data_output, title="2d baseline outputs")
+    output_fig = plot_bl_outputs(data_output, title="2d baseline outputs")
     output_fig.savefig("data_output.jpg")
 
-    pose_2d_fig = plot_baseline_pose_2d(output_3d, title="baseline pose")
+    pose_2d_fig = plot_bl_pose_2d(bl_output, title="baseline pose 2d")
     pose_2d_fig.savefig("pose_2d.jpg")
 
-    pose_3d_fig = plot_baseline_pose_3d(output_3d, title="baseline pose 3d")
+    pose_3d_fig = plot_bl_pose_3d(bl_output, title="baseline pose 3d")
     pose_3d_fig.savefig("pose_3d.jpg")
 
-    target_3d_fig = plot_baseline_pose_3d(target_3d, title="baseline target 3d")
+    target_2d_fig = plot_bl_pose_2d(bl_target, title="baseline target 2d")
+    target_2d_fig.savefig("target_2d.jpg")
+
+    target_3d_fig = plot_bl_pose_3d(bl_target, title="baseline target 3d")
     target_3d_fig.savefig("target_3d.jpg")
 
 

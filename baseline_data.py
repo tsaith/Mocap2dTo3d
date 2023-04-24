@@ -31,7 +31,15 @@ class BaselineData:
 
         self.holistic_data = None 
 
+        self.bl_pose = None
         self.bl_inputs = None
+
+    def update_with_bl_pose(self, bl_pose):
+
+        self.bl_pose = bl_pose
+
+        for i in range(self.num_pose_landmarks):
+            self.pose[i, :] = self.get_point_from_bl_pose(i)
 
     def update(self, holistic_data):
 
@@ -119,6 +127,18 @@ class BaselineData:
         right_wrist = self.get_point(data.get_right_wrist())
         self.pose[self.index_right_wrist, :] = right_wrist
 
+    def get_keypoint(self, index):
+        return self.pose[index, :].copy()
+
+    def get_point_from_bl_pose(self, index):
+
+        x = self.bl_pose[3*index]
+        y = self.bl_pose[3*index+1]
+        z = self.bl_pose[3*index+2]
+
+        point = np.array([x, y, z], dtype=np.float32)
+
+        return point
 
     def get_point(self, data):
 
@@ -134,6 +154,53 @@ class BaselineData:
     def get_pose_flattened(self):
         return self.pose.flatten() 
     
+    def get_connect_pairs(self):
+
+        hip = self.get_keypoint(self.index_hip)
+        right_hip = self.get_keypoint(self.index_right_hip)
+        right_knee = self.get_keypoint(self.index_right_knee)
+        right_ankle = self.get_keypoint(self.index_right_ankle)
+        left_hip = self.get_keypoint(self.index_left_hip)
+        left_knee = self.get_keypoint(self.index_left_knee)
+        left_ankle = self.get_keypoint(self.index_left_ankle)
+        spine02 = self.get_keypoint(self.index_spine02)
+        neck01 = self.get_keypoint(self.index_neck01)
+        nose = self.get_keypoint(self.index_nose)
+        head_top = self.get_keypoint(self.index_head_top)
+        left_shoulder = self.get_keypoint(self.index_left_shoulder)
+        left_elbow = self.get_keypoint(self.index_left_elbow)
+        left_wrist = self.get_keypoint(self.index_left_wrist)
+        right_shoulder = self.get_keypoint(self.index_right_shoulder)
+        right_elbow = self.get_keypoint(self.index_right_elbow)
+        right_wrist = self.get_keypoint(self.index_right_wrist)
+    
+        hip_spine02 = [hip, spine02]
+        spine02_neck01 = [spine02, neck01]
+        neck01_nose = [neck01, nose]
+        nose_head_top = [nose, head_top]
+        neck01_left_shoulder = [neck01, left_shoulder]
+        left_shoulder_left_elbow = [left_shoulder, left_elbow]
+        left_elbow_left_wrist = [left_elbow, left_wrist]
+        neck01_right_shoulder = [neck01, right_shoulder]
+        right_shoulder_right_elbow = [right_shoulder, right_elbow]
+        right_elbow_right_wrist = [right_elbow, right_wrist]
+        hip_left_hip = [hip, left_hip]
+        left_hip_left_knee = [left_hip, left_knee]
+        left_knee_left_ankle = [left_knee, left_ankle]
+        hip_right_hip = [hip, right_hip]
+        right_hip_right_knee = [right_hip, right_knee]
+        right_knee_right_ankle = [right_knee, right_ankle]
+
+        pairs = [
+            hip_spine02, spine02_neck01, neck01_nose, nose_head_top,
+            neck01_left_shoulder, left_shoulder_left_elbow, left_elbow_left_wrist,
+            neck01_right_shoulder, right_shoulder_right_elbow, right_elbow_right_wrist,
+            hip_left_hip, left_hip_left_knee, left_knee_left_ankle,
+            hip_right_hip, right_hip_right_knee, right_knee_right_ankle
+        ]
+
+        return pairs
+
     def get_bl_inputs(self):
 
         num_points = self.num_pose_landmarks - 1

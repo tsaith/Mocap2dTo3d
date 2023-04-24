@@ -16,7 +16,6 @@ from src.model import LinearModel, weight_init
 from holistic_data import HolisticData
 from baseline_data import BaselineData
 
-from plot_utils import plot_baseline_data_2d, plot_baseline_pose_2d
 from plot_utils import plot_baseline_pose_2d, plot_baseline_pose_3d
 
 mp_drawing = mp.solutions.drawing_utils
