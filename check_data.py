@@ -27,6 +27,7 @@ from src.model import LinearModel, weight_init
 from src.datasets.human36m import Human36M
 
 from baseline_data import BaselineData
+from baseline_utils import get_dim_use_2d
 
 import matplotlib.pyplot as plt
 from plot_utils import plot_bl_inputs, plot_bl_outputs
@@ -96,12 +97,15 @@ def main(opt):
 
     model.eval()
 
+    dim_use_3d = stat_3d['dim_use']
+    dim_use_2d = get_dim_use_2d(dim_use_3d)
 
     for i, (inps, tars) in enumerate(test_loader):
 
         if i == 0:
 
             print(f"shape of inps: {inps.shape}")
+
 
             inputs = Variable(inps.cuda())
             targets = Variable(tars.cuda())
@@ -125,12 +129,22 @@ def main(opt):
             outputs_use = outputs_unnorm[:, dim_use]
             targets_use = targets_unnorm[:, dim_use]
 
+            print(f"len(stat_3d['dim_use']): {len(stat_3d['dim_use'])}")
+            print(f"stat_3d['dim_use']: {stat_3d['dim_use']}")
+
             print(f"len(stat_3d['mean']),: {len(stat_3d['mean'])}")
             print(f"len(stat_3d['std']): {len(stat_3d['std'])}")
-            print(f"len(stat_3d['dim_use']): {len(stat_3d['dim_use'])}")
+
+            print(f"stat_3d.keys(): {stat_3d.keys()}")
+
+            print(f"len(stat_3d['dim_ignore']): {len(stat_3d['dim_ignore'])}")
+            print(f"stat_3d['dim_ignore']: {stat_3d['dim_ignore']}")
+
 
     data_input = inputs[0]
     data_output = outputs[0]
+
+    print(f"data_input: {data_input}")
 
     target_3d = targets_use[0] 
     output_3d = outputs_use[0] 

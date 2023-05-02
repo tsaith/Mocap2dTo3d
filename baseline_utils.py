@@ -1,19 +1,14 @@
 import numpy as np
 
-def make_hip_as_center(pose):
 
-    hip = pose[0]
-    out = pose - hip
+def get_dim_use_2d(dim_use):
 
-    return out
+    out = []
+    for i, e in enumerate(dim_use):
 
+        if i % 3 == 2:
+            continue
 
-def holistic_to_baseline_inputs(data):
+        out.append(e)
 
-    num_input_points = 16
-    num_output_points = num_output_points
-    dims = 3
-
-    data_inputs = np.zeros(num_input_points*dims, dtype=np.float32)
-
-    
+    return out    
