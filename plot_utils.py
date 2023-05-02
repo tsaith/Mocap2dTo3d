@@ -127,9 +127,12 @@ def plot_bl_pose_3d(data, xlabel="x", ylabel="y", zlabel="z", title="title"):
 
         ax.plot(x_arr, y_arr, z_arr, color='blue')
 
+    # Set initial view angle
+    ax.view_init(elev=135, azim=90)
 
-    ax.invert_yaxis()
+    ax.invert_xaxis()
     ax.invert_zaxis()
+
 
     ax.set_xlabel(xlabel, fontsize=15)
     ax.set_ylabel(ylabel, fontsize=15)

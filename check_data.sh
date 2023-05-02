@@ -1,0 +1,1 @@
+python check_data.py --load ckpt_best.pth.tar --test

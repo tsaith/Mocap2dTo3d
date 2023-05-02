@@ -16,7 +16,7 @@ from src.model import LinearModel, weight_init
 from holistic_data import HolisticData
 from baseline_data import BaselineData
 
-from plot_utils import plot_baseline_pose_2d, plot_baseline_pose_3d
+from plot_utils import plot_bl_pose_2d, plot_bl_pose_3d
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -63,6 +63,9 @@ if __name__ == '__main__':
     holistic_data = HolisticData()
     baseline_data = BaselineData()
 
+    bl_target = BaselineData()
+    bl_output = BaselineData()
+
     # Baseline model
     model = LinearModel()
     model = model.cuda()
@@ -104,22 +107,27 @@ if __name__ == '__main__':
         baseline_data.update(holistic_data)
 
         inputs = baseline_data.get_bl_inputs()  
+        print(f"inputs shape: {inputs.shape}")
          
         inputs = torch.from_numpy(inputs)
         inputs = Variable(inputs.cuda())
         outputs = model(inputs)
 
         outputs = outputs.data.cpu().numpy()
+        print(f"outputs shape: {outputs.shape}")
 
         outputs = baseline_data.unnormalize_outputs(outputs)
-        baseline_pose = outputs[0]
-        #baseline_pose = baseline_data.get_pose_flattened()
 
-        pose_2d_fig = plot_baseline_pose_2d(baseline_pose, title="baseline pose")
+        output_3d = outputs[0]
+
+        bl_output.update_with_bl_pose(output_3d)
+
+        pose_2d_fig = plot_bl_pose_2d(bl_output, title="baseline pose 2d")
         pose_2d_fig.savefig("pose_2d.jpg")
 
-        pose_3d_fig = plot_baseline_pose_3d(baseline_pose, title="baseline pose 3d")
+        pose_3d_fig = plot_bl_pose_3d(bl_output, title="baseline pose 3d")
         pose_3d_fig.savefig("pose_3d.jpg")
+
 
         # Draw landmark annotation on the image.
         #mp_drawing.draw_landmarks(
