@@ -7,9 +7,11 @@ class BaselineData:
 
         self.num_pose_landmarks = 17
         self.dims = 3
+        self.dims_2d = 3
      
         self.has_pose = True
         self.pose = np.zeros((self.num_pose_landmarks, self.dims), dtype=np.float32)
+        self.pose_2d = np.zeros((self.num_pose_landmarks, self.dims_2d), dtype=np.float32)
 
         self.index_hip = 0
         self.index_right_hip = 1
@@ -34,12 +36,30 @@ class BaselineData:
         self.bl_pose = None
         self.bl_inputs = None
 
+        self.stat_3d = None  
+
+        use_dim = [ 
+            3, 4, 5, 6, 7, 8, 9, 10, 11, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 51,
+            52, 53, 54, 55, 56, 57, 58, 59, 75, 76, 77, 78, 79, 80, 81, 82, 83
+        ]
+        self.use_dim = np.array(use_dim, dtype=np.int32)
+        self.use_dim_with_hip = np.hstack((np.arange(3), self.use_dim)) # Add hip
+
+        self.pose_means = np.zeros((self.num_pose_landmarks, self.dims), dtype=np.float32)
+        self.pose_stddevs = np.zeros((self.num_pose_landmarks, self.dims), dtype=np.float32)
+
+
     def update_with_bl_pose(self, bl_pose):
 
         self.bl_pose = bl_pose
 
         for i in range(self.num_pose_landmarks):
             self.pose[i, :] = self.get_point_from_bl_pose(i)
+
+        # Update 2d pose
+        self.update_2d_pose_from_3d()
+
 
     def update(self, holistic_data):
 
@@ -126,6 +146,12 @@ class BaselineData:
         # right wrist
         right_wrist = self.get_point(data.get_right_wrist())
         self.pose[self.index_right_wrist, :] = right_wrist
+
+        # Update 2d pose
+        self.update_2d_pose_from_3d()
+
+    def update_2d_pose_from_3d(self):
+        self.pose_2d[:, :] = self.pose[:, 0:self.dims_2d]
 
     def get_keypoint(self, index):
         return self.pose[index, :].copy()
@@ -217,14 +243,78 @@ class BaselineData:
             self.bl_inputs[0, 2*i+1] = x
 
         return self.bl_inputs
-          
-    def normalize_inputs(self):
-        pass
 
-    def unnormalize_outputs(self, data):
+    def to_pose_2d(self, pose):
+        return pose.reshape((-1, 2)).copy()
+
+    def normalize_value(self, value, mean, stddev):
+        return (value - mean) /stddev
+
+    def unnormalize_value(self, value, mean, stddev):
+        return value*stddev + mean
+
+    def add_hip_to_pose(self, pose):
 
         hip_point = np.zeros([1, 3], dtype=np.float32)
 
-        out = np.concatenate([hip_point, data], axis=1)
+        out = np.concatenate([hip_point, pose], axis=1)
 
         return out
+
+    def unnormalize_pose(self, pose):
+
+        hip_point = np.zeros([1, 3], dtype=np.float32)
+
+        out = np.concatenate([hip_point, pose], axis=1)
+
+        return out
+    
+    def get_2d_dims_from_3d(self, dims_3d):
+
+        out = []
+        for i, e in enumerate(dims_3d):
+            if i % 3 == 2:
+                continue
+
+            out.append(e)
+
+        out = np.array(out, np.int32)
+
+        return out
+    
+    def get_use_dim(self):
+        return self.use_dim_with_hip
+
+    def get_use_dim_inputs(self):
+        return self.get_2d_dims_from_3d(self.use_dim)
+
+    def get_use_dim_2d(self):
+        return self.get_2d_dims_from_3d(self.use_dim_3d)
+
+    def get_use_dim_3d(self):
+        return self.use_dim_3d
+
+    def set_stat_3d(self, stat_3d):
+        self.stat_3d = stat_3d
+
+        data_means = self.get_data_means()
+        data_stddevs = self.get_data_stddevs()
+
+        #print(f"data_means.shape: {data_means.shape}")
+        #print(f"data_stddevs.shape: {data_stddevs.shape}")
+
+        for i in range(self.num_pose_landmarks):
+
+            self.pose_means[i][0] = data_means[3*i]
+            self.pose_means[i][1] = data_means[3*i+1]
+            self.pose_means[i][2] = data_means[3*i+2]
+
+            self.pose_stddevs[i][0] = data_stddevs[3*i]
+            self.pose_stddevs[i][1] = data_stddevs[3*i+1]
+            self.pose_stddevs[i][2] = data_stddevs[3*i+2]
+
+    def get_data_means(self):
+        return self.stat_3d['mean'][self.get_use_dim()]
+
+    def get_data_stddevs(self):
+        return self.stat_3d['std'][self.get_use_dim()]

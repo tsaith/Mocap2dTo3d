@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.cbook as cbook
 
 
-def plot_bl_inputs(pose, xlabel="x", ylabel="y", title="title"):
+def plot_bl_inputs(pose, xlabel="x", ylabel="y", title="title",
+    mark_point_index=True):
     
     num_points = 16 # Skip hip beacause its value is always as (0, 0)
     x_arr = []
@@ -21,6 +22,11 @@ def plot_bl_inputs(pose, xlabel="x", ylabel="y", title="title"):
     fig, ax = plt.subplots()
     ax.scatter(x_arr, y_arr)
 
+    # Plot the point index 
+    if mark_point_index:
+        for i in range(num_points):
+            ax.annotate(f'{i}', xy=(x_arr[i], y_arr[i]))
+  
     ax.invert_yaxis()
 
     ax.set_xlabel(xlabel, fontsize=15)
@@ -33,22 +39,22 @@ def plot_bl_inputs(pose, xlabel="x", ylabel="y", title="title"):
     return fig
 
 
-def plot_bl_outputs(pose, xlabel="x", ylabel="y", title="title"):
-    return plot_bl_inputs(pose, xlabel=xlabel, ylabel=ylabel, title=title)
+def plot_bl_outputs(pose, xlabel="x", ylabel="y", title="title",
+    mark_point_index=True):
+    return plot_bl_inputs(pose, xlabel=xlabel, ylabel=ylabel, title=title,
+        mark_point_index=mark_point_index)
+
 
 def plot_bl_pose_2d(data, xlabel="x", ylabel="y", title="title",
     mark_point_index=True):
 
     fig, ax = plt.subplots()
-    #fig = plt.figure()
-    #ax = fig.add_subplot(projection='3d')
 
     pose = data.get_pose()
     num_points = data.num_pose_landmarks
 
     x_arr = []
     y_arr = []
-    z_arr = []
        
     for i in range(num_points):
 
@@ -57,7 +63,6 @@ def plot_bl_pose_2d(data, xlabel="x", ylabel="y", title="title",
 
         x_arr.append(x)
         y_arr.append(y)
-
 
     ax.scatter(x_arr, y_arr)
 

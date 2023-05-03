@@ -27,7 +27,7 @@ from src.model import LinearModel, weight_init
 from src.datasets.human36m import Human36M
 
 from baseline_data import BaselineData
-from baseline_utils import get_dim_use_2d
+#from baseline_utils import get_dim_use_2d
 
 import matplotlib.pyplot as plt
 from plot_utils import plot_bl_inputs, plot_bl_outputs
@@ -53,8 +53,10 @@ def main(opt):
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
 
 
+    bl_data = BaselineData()
     bl_output = BaselineData()
     bl_target = BaselineData()
+
 
     # load ckpt
     if opt.load:
@@ -82,6 +84,12 @@ def main(opt):
     # data loading
     # load statistics data
     stat_3d = torch.load(os.path.join(opt.data_dir, 'stat_3d.pth.tar'))
+
+    bl_data.set_stat_3d(stat_3d)
+    use_dim_inputs = bl_data.get_use_dim_inputs()
+    data_means = bl_data.get_data_means()
+    data_stddevs = bl_data.get_data_stddevs()
+
     # test
     if opt.test:
 
@@ -96,9 +104,6 @@ def main(opt):
             pin_memory=True)
 
     model.eval()
-
-    dim_use_3d = stat_3d['dim_use']
-    dim_use_2d = get_dim_use_2d(dim_use_3d)
 
     for i, (inps, tars) in enumerate(test_loader):
 
@@ -146,11 +151,12 @@ def main(opt):
 
     print(f"data_input: {data_input}")
 
-    target_3d = targets_use[0] 
-    output_3d = outputs_use[0] 
- 
-    bl_target.update_with_bl_pose(target_3d)
-    bl_output.update_with_bl_pose(output_3d)
+    bl_target.update_with_bl_pose(targets_use[0])
+    bl_output.update_with_bl_pose(outputs_use[0])
+
+    target_pose = bl_target.get_pose()
+    output_pose = bl_output.get_pose()
+
 
     input_fig = plot_bl_inputs(data_input, title="2d baseline inputs")
     input_fig.savefig("data_input.jpg")
@@ -170,86 +176,6 @@ def main(opt):
     target_3d_fig = plot_bl_pose_3d(bl_target, title="baseline target 3d")
     target_3d_fig.savefig("target_3d.jpg")
 
-
-
-def test(test_loader, model, criterion, stat_3d, procrustes=False):
-
-    losses = utils.AverageMeter()
-
-    model.eval()
-
-    all_dist = []
-    start = time.time()
-    batch_time = 0
-    bar = Bar('>>>', fill='>', max=len(test_loader))
-
-    for i, (inps, tars) in enumerate(test_loader):
-
-        print("")
-        print("shape of inps: ", inps.shape)
-        print("shape of tars: ", tars.shape)
-
-        inputs = Variable(inps.cuda())
-        #targets = Variable(tars.cuda(async=True))
-        targets = Variable(tars.cuda())
-
-        outputs = model(inputs)
-
-        # calculate loss
-        outputs_coord = outputs
-        loss = criterion(outputs_coord, targets)
-
-        losses.update(loss.item(), inputs.size(0))
-
-        tars = targets
-
-        # calculate erruracy
-        targets_unnorm = data_process.unNormalizeData(tars.data.cpu().numpy(), stat_3d['mean'], stat_3d['std'], stat_3d['dim_use'])
-        outputs_unnorm = data_process.unNormalizeData(outputs.data.cpu().numpy(), stat_3d['mean'], stat_3d['std'], stat_3d['dim_use'])
-
-        # remove dim ignored
-        dim_use = np.hstack((np.arange(3), stat_3d['dim_use']))
-
-        outputs_use = outputs_unnorm[:, dim_use]
-        targets_use = targets_unnorm[:, dim_use]
-
-        if procrustes:
-            for ba in range(inps.size(0)):
-                gt = targets_use[ba].reshape(-1, 3)
-                out = outputs_use[ba].reshape(-1, 3)
-                _, Z, T, b, c = get_transformation(gt, out, True)
-                out = (b * out.dot(T)) + c
-                outputs_use[ba, :] = out.reshape(1, 51)
-
-        sqerr = (outputs_use - targets_use) ** 2
-
-        distance = np.zeros((sqerr.shape[0], 17))
-        dist_idx = 0
-        for k in np.arange(0, 17 * 3, 3):
-            distance[:, dist_idx] = np.sqrt(np.sum(sqerr[:, k:k + 3], axis=1))
-            dist_idx += 1
-        all_dist.append(distance)
-
-        # update summary
-        if (i + 1) % 100 == 0:
-            batch_time = time.time() - start
-            start = time.time()
-
-        bar.suffix = '({batch}/{size}) | batch: {batchtime:.4}ms | Total: {ttl} | ETA: {eta:} | loss: {loss:.6f}' \
-            .format(batch=i + 1,
-                    size=len(test_loader),
-                    batchtime=batch_time * 10.0,
-                    ttl=bar.elapsed_td,
-                    eta=bar.eta_td,
-                    loss=losses.avg)
-        bar.next()
-
-    all_dist = np.vstack(all_dist)
-    joint_err = np.mean(all_dist, axis=0)
-    ttl_err = np.mean(all_dist)
-    bar.finish()
-    print (">>> error: {} <<<".format(ttl_err))
-    return losses.avg, ttl_err
 
 
 if __name__ == "__main__":
