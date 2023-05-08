@@ -49,16 +49,16 @@ class BaselineData:
         self.pose_means = np.zeros((self.num_pose_landmarks, self.dims), dtype=np.float32)
         self.pose_stddevs = np.zeros((self.num_pose_landmarks, self.dims), dtype=np.float32)
 
-
-    def update_with_bl_pose(self, bl_pose):
-
-        self.bl_pose = bl_pose
+    def update_with_bl_pose_2d(self, pose):
 
         for i in range(self.num_pose_landmarks):
-            self.pose[i, :] = self.get_point_from_bl_pose(i)
+            self.pose[i, 0:2] = self.get_point_from_bl_pose_2d(i, pose)
 
-        # Update 2d pose
-        self.update_2d_pose_from_3d()
+
+    def update_with_bl_pose_3d(self, pose):
+
+        for i in range(self.num_pose_landmarks):
+            self.pose[i, :] = self.get_point_from_bl_pose_3d(i, pose)
 
 
     def update(self, holistic_data):
@@ -148,19 +148,28 @@ class BaselineData:
         self.pose[self.index_right_wrist, :] = right_wrist
 
         # Update 2d pose
-        self.update_2d_pose_from_3d()
+        #self.update_2d_pose_from_3d()
 
-    def update_2d_pose_from_3d(self):
-        self.pose_2d[:, :] = self.pose[:, 0:self.dims_2d]
+    #def update_2d_pose_from_3d(self):
+    #    self.pose_2d[:, :] = self.pose[:, 0:self.dims_2d]
 
     def get_keypoint(self, index):
         return self.pose[index, :].copy()
 
-    def get_point_from_bl_pose(self, index):
+    def get_point_from_bl_pose_2d(self, index, pose):
 
-        x = self.bl_pose[3*index]
-        y = self.bl_pose[3*index+1]
-        z = self.bl_pose[3*index+2]
+        x = pose[2*index]
+        y = pose[2*index+1]
+
+        point = np.array([x, y], dtype=np.float32)
+
+        return point
+
+    def get_point_from_bl_pose_3d(self, index, pose):
+
+        x = pose[3*index]
+        y = pose[3*index+1]
+        z = pose[3*index+2]
 
         point = np.array([x, y, z], dtype=np.float32)
 
@@ -173,10 +182,6 @@ class BaselineData:
 
         return point
     
-    def get_pose(self):
-        return self.pose
-
-
     def get_pose_flattened(self):
         return self.pose.flatten() 
     
@@ -261,14 +266,42 @@ class BaselineData:
 
         return out
 
-    def unnormalize_pose(self, pose):
+    def unnormalize(self, data_means, data_stddevs):
 
-        hip_point = np.zeros([1, 3], dtype=np.float32)
+        for i in range(self.num_pose_landmarks):
 
-        out = np.concatenate([hip_point, pose], axis=1)
+            if i == 0: # Hip
+                self.pose[i, :] = 0.0        
+                continue
 
-        return out
-    
+            for j in range(self.dims):
+
+                mean = data_means[i, j]
+                stddev = data_stddevs[i, j]
+                value = self.pose[i, j]
+
+                self.pose[i, j] = self.unnormalize_value(value, mean, stddev)
+
+
+    def normalize(self, data_means, data_stddevs):
+
+        for i in range(self.num_pose_landmarks):
+
+            if i == 0: # Hip
+                self.pose[i, :] = 0.0        
+                continue
+
+            for j in range(self.dims):
+
+                mean = data_means[i, j]
+                stddev = data_stddevs[i, j]
+                value = self.pose[i, j]
+                self.pose[i, j] = self.normalize_value(value, mean, stddev)
+
+        # Hip
+        self.pose[0, :] = 0.0        
+
+
     def get_2d_dims_from_3d(self, dims_3d):
 
         out = []
@@ -295,26 +328,31 @@ class BaselineData:
         return self.use_dim_3d
 
     def set_stat_3d(self, stat_3d):
+
         self.stat_3d = stat_3d
 
-        data_means = self.get_data_means()
-        data_stddevs = self.get_data_stddevs()
-
-        #print(f"data_means.shape: {data_means.shape}")
-        #print(f"data_stddevs.shape: {data_stddevs.shape}")
+        data_means = self.stat_3d['mean'][self.get_use_dim()]
+        data_stddevs = self.stat_3d['std'][self.get_use_dim()]
 
         for i in range(self.num_pose_landmarks):
 
-            self.pose_means[i][0] = data_means[3*i]
-            self.pose_means[i][1] = data_means[3*i+1]
-            self.pose_means[i][2] = data_means[3*i+2]
+            self.pose_means[i, 0] = data_means[3*i]
+            self.pose_means[i, 1] = data_means[3*i+1]
+            self.pose_means[i, 2] = data_means[3*i+2]
 
-            self.pose_stddevs[i][0] = data_stddevs[3*i]
-            self.pose_stddevs[i][1] = data_stddevs[3*i+1]
-            self.pose_stddevs[i][2] = data_stddevs[3*i+2]
+            self.pose_stddevs[i, 0] = data_stddevs[3*i]
+            self.pose_stddevs[i, 1] = data_stddevs[3*i+1]
+            self.pose_stddevs[i, 2] = data_stddevs[3*i+2]
 
-    def get_data_means(self):
-        return self.stat_3d['mean'][self.get_use_dim()]
 
-    def get_data_stddevs(self):
-        return self.stat_3d['std'][self.get_use_dim()]
+    def set_pose(self, pose):
+        self.pose = pose
+
+    def get_pose(self):
+        return self.pose
+    
+    def get_pose_means(self):
+        return self.pose_means
+
+    def get_pose_stddevs(self):
+        return self.pose_stddevs

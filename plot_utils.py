@@ -6,7 +6,7 @@ import matplotlib.cbook as cbook
 def plot_bl_inputs(pose, xlabel="x", ylabel="y", title="title",
     mark_point_index=True):
     
-    num_points = 16 # Skip hip beacause its value is always as (0, 0)
+    num_points = 17 # Skip hip beacause its value is always as (0, 0)
     x_arr = []
     y_arr = []
        
@@ -37,12 +37,6 @@ def plot_bl_inputs(pose, xlabel="x", ylabel="y", title="title",
     fig.tight_layout()
     
     return fig
-
-
-def plot_bl_outputs(pose, xlabel="x", ylabel="y", title="title",
-    mark_point_index=True):
-    return plot_bl_inputs(pose, xlabel=xlabel, ylabel=ylabel, title=title,
-        mark_point_index=mark_point_index)
 
 
 def plot_bl_pose_2d(data, xlabel="x", ylabel="y", title="title",

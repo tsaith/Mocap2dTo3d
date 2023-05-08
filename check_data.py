@@ -29,8 +29,7 @@ from src.datasets.human36m import Human36M
 from baseline_data import BaselineData
 #from baseline_utils import get_dim_use_2d
 
-import matplotlib.pyplot as plt
-from plot_utils import plot_bl_inputs, plot_bl_outputs
+from plot_utils import plot_bl_inputs
 from plot_utils import plot_bl_pose_2d, plot_bl_pose_3d
 
 def main(opt):
@@ -86,9 +85,8 @@ def main(opt):
     stat_3d = torch.load(os.path.join(opt.data_dir, 'stat_3d.pth.tar'))
 
     bl_data.set_stat_3d(stat_3d)
-    use_dim_inputs = bl_data.get_use_dim_inputs()
-    data_means = bl_data.get_data_means()
-    data_stddevs = bl_data.get_data_stddevs()
+    pose_means = bl_data.get_pose_means()
+    pose_stddevs = bl_data.get_pose_stddevs()
 
     # test
     if opt.test:
@@ -109,9 +107,6 @@ def main(opt):
 
         if i == 0:
 
-            print(f"shape of inps: {inps.shape}")
-
-
             inputs = Variable(inps.cuda())
             targets = Variable(tars.cuda())
             outputs = model(inputs)
@@ -119,10 +114,6 @@ def main(opt):
             inputs = inputs.data.cpu().numpy()
             targets = targets.data.cpu().numpy()
             outputs = outputs.data.cpu().numpy()
-
-            print("shape of inputs: ", inputs.shape)
-            print("shape of targets: ", targets.shape)
-            print("shape of outputs: ", outputs.shape)
 
             # calculate erruracy
             targets_unnorm = data_process.unNormalizeData(targets, stat_3d['mean'], stat_3d['std'], stat_3d['dim_use'])
@@ -134,48 +125,69 @@ def main(opt):
             outputs_use = outputs_unnorm[:, dim_use]
             targets_use = targets_unnorm[:, dim_use]
 
-            print(f"len(stat_3d['dim_use']): {len(stat_3d['dim_use'])}")
-            print(f"stat_3d['dim_use']: {stat_3d['dim_use']}")
+    input = inputs[0]
+    output = outputs[0]
+    target = targets[0]
 
-            print(f"len(stat_3d['mean']),: {len(stat_3d['mean'])}")
-            print(f"len(stat_3d['std']): {len(stat_3d['std'])}")
+    input = np.concatenate([np.zeros(2), input], axis=0) # Add hip
+    output = np.concatenate([np.zeros(3), output], axis=0) # Add hip
+    target = np.concatenate([np.zeros(3), target], axis=0) # Add hip
 
-            print(f"stat_3d.keys(): {stat_3d.keys()}")
+    print(f"input shape: ", input.shape)
+    #print(f"input: {input}")
+    print(f"output shape: ", output.shape)
+    #print(f"output: {output}")
 
-            print(f"len(stat_3d['dim_ignore']): {len(stat_3d['dim_ignore'])}")
-            print(f"stat_3d['dim_ignore']: {stat_3d['dim_ignore']}")
+    input_data = BaselineData()
+    input_data.update_with_bl_pose_2d(input)
+
+    output_data = BaselineData()
+    output_data.update_with_bl_pose_3d(output)
+
+    target_data = BaselineData()
+    target_data.update_with_bl_pose_3d(target)
+
+    fig = plot_bl_pose_2d(input_data, title="baseline input")
+    fig.savefig("plot_input.jpg")
+
+    # Input (Unnormalized)
+    input_data.unnormalize(pose_means, pose_stddevs)
+
+    fig = plot_bl_pose_2d(input_data, title="baseline input unnormalized")
+    fig.savefig("plot_input_unormalized.jpg")
+
+    # Output pose
+    fig = plot_bl_pose_2d(output_data, title="baseline output")
+    fig.savefig("plot_output_2d.jpg")
+
+    fig = plot_bl_pose_3d(output_data, title="baseline output")
+    fig.savefig("plot_output_3d.jpg")
+
+    # Output pose
+    output_data.unnormalize(pose_means, pose_stddevs)
+
+    fig = plot_bl_pose_2d(output_data, title="baseline pose 2d")
+    fig.savefig("plot_output_pose_2d.jpg")
+
+    fig = plot_bl_pose_3d(output_data, title="baseline pose 3d")
+    fig.savefig("plot_output_pose_3d.jpg")
+
+    # Target
+    fig = plot_bl_pose_2d(target_data, title="baseline target 2d")
+    fig.savefig("plot_target_2d.jpg")
+
+    fig = plot_bl_pose_3d(target_data, title="baseline target 3d")
+    fig.savefig("plot_target_3d.jpg")
 
 
-    data_input = inputs[0]
-    data_output = outputs[0]
+    # Target pose
+    target_data.unnormalize(pose_means, pose_stddevs)
 
-    print(f"data_input: {data_input}")
+    fig = plot_bl_pose_2d(target_data, title="baseline target 2d")
+    fig.savefig("plot_target_pose_2d.jpg")
 
-    bl_target.update_with_bl_pose(targets_use[0])
-    bl_output.update_with_bl_pose(outputs_use[0])
-
-    target_pose = bl_target.get_pose()
-    output_pose = bl_output.get_pose()
-
-
-    input_fig = plot_bl_inputs(data_input, title="2d baseline inputs")
-    input_fig.savefig("data_input.jpg")
-
-    output_fig = plot_bl_outputs(data_output, title="2d baseline outputs")
-    output_fig.savefig("data_output.jpg")
-
-    pose_2d_fig = plot_bl_pose_2d(bl_output, title="baseline pose 2d")
-    pose_2d_fig.savefig("pose_2d.jpg")
-
-    pose_3d_fig = plot_bl_pose_3d(bl_output, title="baseline pose 3d")
-    pose_3d_fig.savefig("pose_3d.jpg")
-
-    target_2d_fig = plot_bl_pose_2d(bl_target, title="baseline target 2d")
-    target_2d_fig.savefig("target_2d.jpg")
-
-    target_3d_fig = plot_bl_pose_3d(bl_target, title="baseline target 3d")
-    target_3d_fig.savefig("target_3d.jpg")
-
+    fig = plot_bl_pose_3d(target_data, title="baseline target 3d")
+    fig.savefig("plot_target_pose_3d.jpg")
 
 
 if __name__ == "__main__":
