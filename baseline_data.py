@@ -11,7 +11,6 @@ class BaselineData:
      
         self.has_pose = True
         self.pose = np.zeros((self.num_pose_landmarks, self.dims), dtype=np.float32)
-        #self.pose_2d = np.zeros((self.num_pose_landmarks, self.dims_2d), dtype=np.float32)
 
         self.index_hip = 0
         self.index_right_hip = 1
@@ -154,6 +153,9 @@ class BaselineData:
         # right wrist
         right_wrist = self.get_point(data.get_right_wrist())
         self.pose[self.index_right_wrist, :] = right_wrist
+
+        # Mapping Mediapipe pose to H3.6m camera space
+        self.mp_to_h36m_camera_space(self)
 
     def get_keypoint(self, index):
         return self.pose[index, :].copy()
@@ -366,3 +368,13 @@ class BaselineData:
 
     def get_pose_stddevs(self):
         return self.pose_stddevs
+
+    def mp_to_h36m_camera_space(self):
+
+        h36m_width = 1000.0
+        h36m_height = 1000.0
+
+        for i in range(self.num_pose_landmarks):
+
+            self.pose[i, 0] = self.pose[i, 0] * h36m_width
+            self.pose[i, 1] = self.pose[i, 0] * h36m_height

@@ -216,6 +216,9 @@ def main(opt):
 
 
     # Make animations
+    dir_path = "output/anims/inputs"
+    make_animations(dir_path, inputs_data, is_3d=False)
+
     dir_path = "output/anims/inputs_unnorm"
     make_animations(dir_path, inputs_unnorm_data, is_3d=False)
 
