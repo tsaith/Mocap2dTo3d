@@ -27,10 +27,24 @@ from src.model import LinearModel, weight_init
 from src.datasets.human36m import Human36M
 
 from baseline_data import BaselineData
-#from baseline_utils import get_dim_use_2d
 
+from file_utils import make_dir
 from plot_utils import plot_bl_inputs
 from plot_utils import plot_bl_pose_2d, plot_bl_pose_3d
+from anim_utils import make_animations
+
+
+def add_hip(targets, is_3d=True):
+
+    outputs = []
+    dims = 3
+    for target in targets:
+
+        dims = 3 if is_3d else 2
+        out = np.concatenate([np.zeros(dims), target], axis=0)
+        outputs.append(out)
+
+    return outputs
 
 def main(opt):
 
@@ -103,9 +117,10 @@ def main(opt):
 
     model.eval()
 
+    action_index = 0
     for i, (inps, tars) in enumerate(test_loader):
 
-        if i == 0:
+        if i == action_index:
 
             inputs = Variable(inps.cuda())
             targets = Variable(tars.cuda())
@@ -122,72 +137,107 @@ def main(opt):
             # remove dim ignored
             dim_use = np.hstack((np.arange(3), stat_3d['dim_use']))
 
-            outputs_use = outputs_unnorm[:, dim_use]
-            targets_use = targets_unnorm[:, dim_use]
-
-    input = inputs[0]
-    output = outputs[0]
-    target = targets[0]
-
-    input = np.concatenate([np.zeros(2), input], axis=0) # Add hip
-    output = np.concatenate([np.zeros(3), output], axis=0) # Add hip
-    target = np.concatenate([np.zeros(3), target], axis=0) # Add hip
-
-    print(f"input shape: ", input.shape)
-    #print(f"input: {input}")
-    print(f"output shape: ", output.shape)
-    #print(f"output: {output}")
-
-    input_data = BaselineData()
-    input_data.update_with_bl_pose_2d(input)
-
-    output_data = BaselineData()
-    output_data.update_with_bl_pose_3d(output)
-
-    target_data = BaselineData()
-    target_data.update_with_bl_pose_3d(target)
-
-    fig = plot_bl_pose_2d(input_data, title="baseline input")
-    fig.savefig("plot_input.jpg")
-
-    # Input (Unnormalized)
-    input_data.unnormalize(pose_means, pose_stddevs)
-
-    fig = plot_bl_pose_2d(input_data, title="baseline input unnormalized")
-    fig.savefig("plot_input_unormalized.jpg")
-
-    # Output pose
-    fig = plot_bl_pose_2d(output_data, title="baseline output")
-    fig.savefig("plot_output_2d.jpg")
-
-    fig = plot_bl_pose_3d(output_data, title="baseline output")
-    fig.savefig("plot_output_3d.jpg")
-
-    # Output pose
-    output_data.unnormalize(pose_means, pose_stddevs)
-
-    fig = plot_bl_pose_2d(output_data, title="baseline pose 2d")
-    fig.savefig("plot_output_pose_2d.jpg")
-
-    fig = plot_bl_pose_3d(output_data, title="baseline pose 3d")
-    fig.savefig("plot_output_pose_3d.jpg")
-
-    # Target
-    fig = plot_bl_pose_2d(target_data, title="baseline target 2d")
-    fig.savefig("plot_target_2d.jpg")
-
-    fig = plot_bl_pose_3d(target_data, title="baseline target 3d")
-    fig.savefig("plot_target_3d.jpg")
+            outputs_unnorm = outputs_unnorm[:, dim_use]
+            targets_unnorm = targets_unnorm[:, dim_use]
 
 
-    # Target pose
-    target_data.unnormalize(pose_means, pose_stddevs)
+    print(f"action_index: {action_index}") 
+    print(f"frame_num: {len(targets)}") 
 
-    fig = plot_bl_pose_2d(target_data, title="baseline target 2d")
-    fig.savefig("plot_target_pose_2d.jpg")
+    # Add hip
+    inputs = add_hip(inputs, is_3d=False)
+    outputs = add_hip(outputs, is_3d=True)
+    targets = add_hip(targets, is_3d=True)
 
-    fig = plot_bl_pose_3d(target_data, title="baseline target 3d")
-    fig.savefig("plot_target_pose_3d.jpg")
+    inputs_data = []
+    for input in inputs:
+
+        input_data = BaselineData()
+        input_data.update_with_bl_pose_2d(input)
+        inputs_data.append(input_data)
+
+
+    outputs_data = []
+    for output in outputs:
+
+        output_data = BaselineData()
+        output_data.update_with_bl_pose_3d(output)
+        outputs_data.append(output_data)
+
+    targets_data = []
+    for target in targets:
+
+        target_data = BaselineData()
+        target_data.update_with_bl_pose_3d(target)
+        targets_data.append(target_data)
+
+
+    outputs_pose_data = []
+    for output_data in outputs_data:
+
+        pose = output_data.unnormalize(pose_means, pose_stddevs)
+        output_pose_data = BaselineData()
+        output_pose_data.update_with_pose(pose)
+
+        outputs_pose_data.append(output_pose_data)
+
+    targets_pose_data = []
+    for target_data in targets_data:
+
+        pose = target_data.unnormalize(pose_means, pose_stddevs)
+        target_pose_data = BaselineData()
+        target_pose_data.update_with_pose(pose)
+
+        targets_pose_data.append(target_pose_data)
+
+    
+    targets_unnorm_data = []
+    for target_unnorm in targets_unnorm:
+
+        target_unnorm_data = BaselineData()
+        target_unnorm_data.update_with_bl_pose_3d(target_unnorm)
+
+        targets_unnorm_data.append(target_unnorm_data)
+
+    inputs_unnorm_data = []
+    for input_data in inputs_data:
+
+        pose = input_data.unnormalize(pose_means, pose_stddevs, is_3d=False)
+        input_unnorm_data = BaselineData()
+        input_unnorm_data.update_with_pose(pose, is_3d=False)
+
+        inputs_unnorm_data.append(input_unnorm_data)
+
+
+
+
+    # Target unnorm
+    fig = plot_bl_pose_2d(target_unnorm_data, title="baseline target 2d")
+    fig.savefig("plot_target_unnorm_2d.jpg")
+
+    fig = plot_bl_pose_3d(target_unnorm_data, title="baseline target 3d")
+    fig.savefig("plot_target_unnorm_3d.jpg")
+
+
+    # Make animations
+    dir_path = "output/anims/inputs_unnorm"
+    make_animations(dir_path, inputs_unnorm_data, is_3d=False)
+
+    dir_path = "output/anims/outputs_pose"
+    make_animations(dir_path, outputs_pose_data)
+
+    dir_path = "output/anims/outputs_pose_2d"
+    make_animations(dir_path, outputs_pose_data, is_3d=False)
+
+    dir_path = "output/anims/targets_pose"
+    make_animations(dir_path, targets_pose_data)
+
+    dir_path = "output/anims/targets_pose_2d"
+    make_animations(dir_path, targets_pose_data, is_3d=False)
+
+    dir_path = "output/anims/target_unnorm"
+    make_animations(dir_path, targets_unnorm_data)
+
 
 
 if __name__ == "__main__":
