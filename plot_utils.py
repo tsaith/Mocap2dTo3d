@@ -40,7 +40,7 @@ def plot_bl_inputs(pose, xlabel="x", ylabel="y", title="title",
 
 
 def plot_bl_pose_2d(data, xlabel="x", ylabel="y", title="title",
-    mark_point_index=True):
+    mark_point_index=True, xlim=None, ylim=None):
 
     fig, ax = plt.subplots()
 
@@ -77,6 +77,15 @@ def plot_bl_pose_2d(data, xlabel="x", ylabel="y", title="title",
 
         ax.plot(x_arr, y_arr, color='blue')
 
+    if xlim is None:
+        ax.set_xlim([-1000, 1000])
+    else:
+        ax.set_xlim(xlim)
+
+    if ylim is None:
+        ax.set_ylim([-1000, 1000])
+    else:
+        ax.set_ylim(ylim)
 
     ax.invert_yaxis()
 
@@ -89,7 +98,8 @@ def plot_bl_pose_2d(data, xlabel="x", ylabel="y", title="title",
     
     return fig
 
-def plot_bl_pose_3d(data, xlabel="x", ylabel="y", zlabel="z", title="title"):
+def plot_bl_pose_3d(data, xlabel="x", ylabel="y", zlabel="z", title="title",
+    xlim=None, ylim=None, zlim=None):
 
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
@@ -129,16 +139,33 @@ def plot_bl_pose_3d(data, xlabel="x", ylabel="y", zlabel="z", title="title"):
     # Set initial view angle
     ax.view_init(elev=135, azim=90)
 
+    if xlim is None:
+        ax.set_xlim([-1000, 1000])
+    else:
+        ax.set_xlim(xlim)
+
+    if ylim is None:
+        ax.set_ylim([-1000, 1000])
+    else:
+        ax.set_ylim(ylim)
+
+    if zlim is None:
+        ax.set_zlim([-1000, 1000])
+    else:
+        ax.set_zlim(zlim)
+
     ax.invert_xaxis()
     ax.invert_zaxis()
-
 
     ax.set_xlabel(xlabel, fontsize=15)
     ax.set_ylabel(ylabel, fontsize=15)
     ax.set_zlabel(zlabel, fontsize=15)
     ax.set_title(title)
 
+
+
     ax.grid(True)
     fig.tight_layout()
     
     return fig
+

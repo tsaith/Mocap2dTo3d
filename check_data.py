@@ -65,11 +65,7 @@ def main(opt):
     criterion = nn.MSELoss(size_average=True).cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
 
-
     bl_data = BaselineData()
-    bl_output = BaselineData()
-    bl_target = BaselineData()
-
 
     # load ckpt
     if opt.load:
