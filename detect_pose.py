@@ -1,3 +1,4 @@
+import os
 import cv2 as cv
 from time import perf_counter
 from skyeye.utils.opencv import Webcam, wait_key
@@ -17,6 +18,7 @@ from holistic_data import HolisticData
 from baseline_data import BaselineData
 
 from plot_utils import plot_bl_pose_2d, plot_bl_pose_3d
+from file_utils import make_dir
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -52,6 +54,9 @@ if __name__ == '__main__':
 
     baseline_checkpoint_path = "ckpt_best.pth.tar"
 
+    output_dir = "output/snapshot"
+    make_dir(output_dir)
+
     # Set mediapipe using GPU
     with open(r'mediapipe.yaml', 'r', encoding='utf-8') as f:
         inputs = yaml.load(f, Loader=yaml.Loader)
@@ -77,6 +82,8 @@ if __name__ == '__main__':
 
     holistic_data = HolisticData()
     baseline_data = BaselineData()
+    mp_pose_data = BaselineData()
+    bl_pose_data = BaselineData()
 
 
     # Baseline model
@@ -128,31 +135,58 @@ if __name__ == '__main__':
         results = holistic_detector.process(image)
 
         holistic_data.update(results)
-        baseline_data.update(holistic_data)
+        baseline_data.update_with_holistic(holistic_data)
 
+        mp_pose = baseline_data.to_mp_pose()
+        mp_pose_data.update_with_pose(mp_pose)
+
+        bl_pose = baseline_data.to_bl_pose()
+        bl_pose_data.update_with_pose(bl_pose)
+
+        '''
         inputs = baseline_data.get_bl_inputs()
-        print(f"inputs shape: {inputs.shape}")
-
-        print(f"pose: {baseline_data.pose}")
+        #print(f"inputs: {inputs}")
          
         inputs = torch.from_numpy(inputs)
         inputs = Variable(inputs.cuda())
         outputs = model(inputs)
 
         outputs = outputs.data.cpu().numpy()
-        print(f"outputs shape: {outputs.shape}")
+        #print(f"outputs shape: {outputs.shape}")
 
         outputs = baseline_data.add_hip(outputs)
         baseline_data.update_with_bl_pose_3d(outputs[0])
         pose = baseline_data.unnormalize()
         baseline_data.update_with_pose(pose)
+        '''
+
+        #print(f"pose: {baseline_data.pose}")
+        #print(f"pose: {mp_pose_data.pose}")
+        print(f"pose: {bl_pose_data.pose}")
+
+        # Make plots
+        '''
+        filename = f"mp_pose_{frame_count:04d}.jpg"
+        filepath = os.path.join(output_dir, filename)
+
+        fig = plot_bl_pose_3d(mp_pose_data, title="Mediapipe pose 3d",
+            xlim=[0, 640], ylim=[0, 480], zlim=[-320, 320])
+        fig.savefig(filepath)
+        '''
+
+        filename = f"bl_pose_{frame_count:04d}.jpg"
+        filepath = os.path.join(output_dir, filename)
+
+        fig = plot_bl_pose_3d(bl_pose_data, title="Baseline pose 3d",
+            xlim=[0, 1000], ylim=[0, 1000], zlim=[-500, 500])
+        fig.savefig(filepath)
 
         '''
-        pose_2d_fig = plot_bl_pose_2d(bl_output, title="baseline pose 2d")
-        pose_2d_fig.savefig("pose_2d.jpg")
+        filename = f"pose_{frame_count:04d}.jpg"
+        filepath = os.path.join(output_dir, filename)
 
-        pose_3d_fig = plot_bl_pose_3d(bl_output, title="baseline pose 3d")
-        pose_3d_fig.savefig("pose_3d.jpg")
+        fig = plot_bl_pose_3d(baseline_data, title="baseline pose 3d")
+        fig.savefig(filepath)
         '''
 
 

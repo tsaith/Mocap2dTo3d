@@ -68,7 +68,7 @@ class BaselineData:
                 self.pose[i, 0:2] = pose[i, 0:2]
 
 
-    def update(self, holistic_data):
+    def update_with_holistic(self, holistic_data):
 
         self.holistic_data = holistic_data 
         data = holistic_data
@@ -155,7 +155,8 @@ class BaselineData:
         self.pose[self.index_right_wrist, :] = right_wrist
 
         # Mapping Mediapipe pose to H3.6m camera space
-        self.mp_to_h36m_camera_space()
+        #self.mp_to_h36m_camera_space()
+
 
     def get_keypoint(self, index):
         return self.pose[index, :].copy()
@@ -241,7 +242,8 @@ class BaselineData:
         num_points = self.num_pose_landmarks - 1
         self.bl_inputs = np.zeros([1, num_points*2], dtype=np.float32)
 
-        pose = self.normalize(self.pose_means, self.pose_stddevs)
+        pose = self.normalize()
+        #print(f"pose: {pose}")
 
         for i in range(num_points):
 
@@ -334,8 +336,6 @@ class BaselineData:
 
         return output
 
-
-
     def get_2d_dims_from_3d(self, dims_3d):
 
         out = []
@@ -391,13 +391,24 @@ class BaselineData:
     def get_pose_stddevs(self):
         return self.pose_stddevs
 
-    def mp_to_h36m_camera_space(self):
+    def to_mp_pose(self, width=640, height=480):
 
-        h36m_width = 1000.0
-        h36m_height = 1000.0
-
+        pose = np.zeros_like(self.pose)
         for i in range(self.num_pose_landmarks):
 
-            self.pose[i, 0] = self.pose[i, 0] * h36m_width
-            self.pose[i, 1] = self.pose[i, 1] * h36m_height
-            self.pose[i, 2] = self.pose[i, 2] * h36m_width
+            pose[i, 0] = self.pose[i, 0] * width
+            pose[i, 1] = self.pose[i, 1] * height
+            pose[i, 2] = self.pose[i, 2] * width * 0.5
+
+        return pose
+
+    def to_bl_pose(self, width=1000, height=1000):
+
+        pose = np.zeros_like(self.pose)
+        for i in range(self.num_pose_landmarks):
+
+            pose[i, 0] = self.pose[i, 0] * width
+            pose[i, 1] = self.pose[i, 1] * height
+            pose[i, 2] = self.pose[i, 2] * width * 0.5
+
+        return pose
