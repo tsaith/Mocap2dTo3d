@@ -116,7 +116,7 @@ class BaselineData:
         shoulder_center = 0.5*(left_shoulder + right_shoulder)
         spine02 = 0.5*(hip + shoulder_center)
 
-        self.pose[self.index_left_ankle, :] = spine02
+        self.pose[self.index_spine02, :] = spine02
 
         # Neck01
         neck01 = 0.5*(head + shoulder_center)
@@ -155,7 +155,7 @@ class BaselineData:
         self.pose[self.index_right_wrist, :] = right_wrist
 
         # Mapping Mediapipe pose to H3.6m camera space
-        self.mp_to_h36m_camera_space(self)
+        self.mp_to_h36m_camera_space()
 
     def get_keypoint(self, index):
         return self.pose[index, :].copy()
@@ -241,15 +241,16 @@ class BaselineData:
         num_points = self.num_pose_landmarks - 1
         self.bl_inputs = np.zeros([1, num_points*2], dtype=np.float32)
 
+        pose = self.normalize(self.pose_means, self.pose_stddevs)
+
         for i in range(num_points):
 
             j = i+1
-
-            x = self.pose[j, 0]    
-            y = self.pose[j, 1]    
+            x = pose[j, 0]    
+            y = pose[j, 1]    
 
             self.bl_inputs[0, 2*i] = x
-            self.bl_inputs[0, 2*i+1] = x
+            self.bl_inputs[0, 2*i+1] = y
 
         return self.bl_inputs
 
@@ -262,15 +263,28 @@ class BaselineData:
     def unnormalize_value(self, value, mean, stddev):
         return value*stddev + mean
 
-    def add_hip_to_pose(self, pose):
+    def add_hip(self, targets, is_3d=True):
 
-        hip_point = np.zeros([1, 3], dtype=np.float32)
+        outputs = []
+        dims = 3
+        for target in targets:
 
-        out = np.concatenate([hip_point, pose], axis=1)
+            dims = 3 if is_3d else 2
+            out = np.concatenate([np.zeros(dims), target], axis=0)
+            outputs.append(out)
 
-        return out
+        return outputs
 
-    def unnormalize(self, data_means, data_stddevs, is_3d=True):
+    def normalize(self, pose=None, data_means=None, data_stddevs=None):
+
+        if pose is None:
+            pose = self.pose
+
+        if data_means is None:
+            data_means = self.pose_means 
+
+        if data_stddevs is None:
+            data_stddevs = self.pose_stddevs
 
         output = np.zeros_like(self.pose)
 
@@ -284,8 +298,35 @@ class BaselineData:
 
                 mean = data_means[i, j]
                 stddev = data_stddevs[i, j]
-                value = self.pose[i, j]
+                value = pose[i, j]
+                output[i, j] = self.normalize_value(value, mean, stddev)
 
+        return output
+
+    def unnormalize(self, pose=None, data_means=None, data_stddevs=None, is_3d=True):
+
+        if pose is None:
+            pose = self.pose
+
+        if data_means is None:
+            data_means = self.pose_means 
+
+        if data_stddevs is None:
+            data_stddevs = self.pose_stddevs
+
+        output = np.zeros_like(self.pose)
+
+        for i in range(self.num_pose_landmarks):
+
+            if i == 0: # Hip
+                output[i, :] = 0.0        
+                continue
+
+            for j in range(self.dims):
+
+                mean = data_means[i, j]
+                stddev = data_stddevs[i, j]
+                value = pose[i, j]
                 output[i, j] = self.unnormalize_value(value, mean, stddev)
 
         if not is_3d:
@@ -294,24 +335,6 @@ class BaselineData:
         return output
 
 
-    def normalize(self, data_means, data_stddevs):
-
-        output = np.zeros_like(self.pose)
-
-        for i in range(self.num_pose_landmarks):
-
-            if i == 0: # Hip
-                output[i, :] = 0.0        
-                continue
-
-            for j in range(self.dims):
-
-                mean = data_means[i, j]
-                stddev = data_stddevs[i, j]
-                value = self.pose[i, j]
-                output[i, j] = self.normalize_value(value, mean, stddev)
-
-        return output 
 
     def get_2d_dims_from_3d(self, dims_3d):
 
@@ -344,7 +367,6 @@ class BaselineData:
 
         data_means = self.stat_3d['mean'][self.get_use_dim()]
         data_stddevs = self.stat_3d['std'][self.get_use_dim()]
-        print(f"use_dim: {self.get_use_dim()}")
 
         for i in range(self.num_pose_landmarks):
 
@@ -377,4 +399,5 @@ class BaselineData:
         for i in range(self.num_pose_landmarks):
 
             self.pose[i, 0] = self.pose[i, 0] * h36m_width
-            self.pose[i, 1] = self.pose[i, 0] * h36m_height
+            self.pose[i, 1] = self.pose[i, 1] * h36m_height
+            self.pose[i, 2] = self.pose[i, 2] * h36m_width

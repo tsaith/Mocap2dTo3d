@@ -38,9 +38,14 @@ def draw_msg(image, msg, x, y, y_shift=20, color=(0, 255,0)):
 
 if __name__ == '__main__':
 
+    use_webcam = False # True: use video; False: use webcam
+
+    video_path = "videos/WalkAround.mp4"
+    webcam_device = 0 # Device ID
 
     frame_width = 640
     frame_height = 480
+
     use_V4L2 = True
     autofocus = False
     auto_exposure = True
@@ -50,21 +55,29 @@ if __name__ == '__main__':
     # Set mediapipe using GPU
     with open(r'mediapipe.yaml', 'r', encoding='utf-8') as f:
         inputs = yaml.load(f, Loader=yaml.Loader)
+
     enable_gpu = inputs['enable_gpu']
 
-    webcam = Webcam()
-    if webcam.is_open():
-        webcam.release()
+    if use_webcam:
 
-    device = 0 # Device ID
-    webcam.open(device, width=frame_width, height=frame_height,
-        use_V4L2=use_V4L2, autofocus=autofocus, auto_exposure=auto_exposure)
+        webcam = Webcam()
+        if webcam.is_open():
+            webcam.release()
+
+        cap = webcam.open(webcam_device, width=frame_width, height=frame_height,
+            use_V4L2=use_V4L2, autofocus=autofocus, auto_exposure=auto_exposure)
+
+    else:
+
+        cap = cv.VideoCapture(video_path)
+        if not cap.isOpened():
+            print(f"Failed to open video file. {video_path}")
+            exit()
+
 
     holistic_data = HolisticData()
     baseline_data = BaselineData()
 
-    bl_target = BaselineData()
-    bl_output = BaselineData()
 
     # Baseline model
     model = LinearModel()
@@ -76,6 +89,11 @@ if __name__ == '__main__':
     model.load_state_dict(ckpt['state_dict'])
     model.eval()
 
+    stat_3d_path = "data/stat_3d.pth.tar"
+    stat_3d = torch.load(stat_3d_path)
+    baseline_data.set_stat_3d(stat_3d)
+
+
     frame_count = 0
     while True:
 
@@ -83,9 +101,14 @@ if __name__ == '__main__':
         print("frame_count = {}".format(frame_count))
         time_start = perf_counter()
 
-        frame = webcam.read()
-        if frame is None:
+        ret, frame = cap.read()
+
+        if not ret:
             break
+
+        # Resize frame  
+        frame = cv.resize(frame, (frame_width, frame_height), interpolation=cv.INTER_AREA)
+
 
         frame = cv.flip(frame, 1)
         image = frame.copy()
@@ -98,6 +121,7 @@ if __name__ == '__main__':
         else:
             # the BGR image to RGB.
             image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+
         # To improve performance, optionally mark the image as not writeable to
         # pass by reference.
         image.flags.writeable = False
@@ -106,8 +130,10 @@ if __name__ == '__main__':
         holistic_data.update(results)
         baseline_data.update(holistic_data)
 
-        inputs = baseline_data.get_bl_inputs()  
+        inputs = baseline_data.get_bl_inputs()
         print(f"inputs shape: {inputs.shape}")
+
+        print(f"pose: {baseline_data.pose}")
          
         inputs = torch.from_numpy(inputs)
         inputs = Variable(inputs.cuda())
@@ -116,17 +142,18 @@ if __name__ == '__main__':
         outputs = outputs.data.cpu().numpy()
         print(f"outputs shape: {outputs.shape}")
 
-        outputs = baseline_data.unnormalize_outputs(outputs)
+        outputs = baseline_data.add_hip(outputs)
+        baseline_data.update_with_bl_pose_3d(outputs[0])
+        pose = baseline_data.unnormalize()
+        baseline_data.update_with_pose(pose)
 
-        output_3d = outputs[0]
-
-        bl_output.update_with_bl_pose(output_3d)
-
+        '''
         pose_2d_fig = plot_bl_pose_2d(bl_output, title="baseline pose 2d")
         pose_2d_fig.savefig("pose_2d.jpg")
 
         pose_3d_fig = plot_bl_pose_3d(bl_output, title="baseline pose 3d")
         pose_3d_fig.savefig("pose_3d.jpg")
+        '''
 
 
         # Draw landmark annotation on the image.
@@ -171,8 +198,14 @@ if __name__ == '__main__':
         if key == ord("q") or key == 27: break
 
 
-    # cleanup the camera and close any open windows
-    if webcam.is_open():
-        webcam.release()
+    if use_webcam:
+
+        # cleanup the camera and close any open windows
+        if webcam.is_open():
+            webcam.release()
+    else:
+
+        if cap.isOpened():
+            cap.release()        
 
     cv.destroyAllWindows()

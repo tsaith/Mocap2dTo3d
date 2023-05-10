@@ -205,8 +205,6 @@ def main(opt):
         inputs_unnorm_data.append(input_unnorm_data)
 
 
-
-
     # Target unnorm
     fig = plot_bl_pose_2d(target_unnorm_data, title="baseline target 2d")
     fig.savefig("plot_target_unnorm_2d.jpg")
@@ -214,10 +212,9 @@ def main(opt):
     fig = plot_bl_pose_3d(target_unnorm_data, title="baseline target 3d")
     fig.savefig("plot_target_unnorm_3d.jpg")
 
-
     # Make animations
     dir_path = "output/anims/inputs"
-    make_animations(dir_path, inputs_data, is_3d=False)
+    make_animations(dir_path, inputs_data, is_3d=False, xlim=[-2, 2], ylim=[-2, 2])
 
     dir_path = "output/anims/inputs_unnorm"
     make_animations(dir_path, inputs_unnorm_data, is_3d=False)
